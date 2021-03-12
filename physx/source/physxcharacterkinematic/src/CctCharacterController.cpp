@@ -1905,7 +1905,20 @@ PxControllerCollisionFlags SweepTest::moveCharacter(
 
             const float touchedTriHeight = float(PxExtended(mTouchedTriMax) - originalBottomPoint);
 
-/*			if(touchedTriHeight>mUserParams.mStepOffset)
+/*			bool cant_climb = false;
+			if (volume.getType()==SweptVolumeType::eBOX || (volume.getType()==SweptVolumeType::eCAPSULE && constrainedClimbingMode))
+			{
+				if (touchedTriHeight>mUserParams.mStepOffset)
+					cant_climb = true;
+			}
+			else if (volume.getType()==SweptVolumeType::eCAPSULE && !constrainedClimbingMode)
+			{
+				const float halfCapsuleRadius = static_cast<const SweptCapsule&>(volume).mRadius * 0.5f;
+				if (touchedTriHeight>halfCapsuleRadius)
+					cant_climb = true;
+			}
+
+			if(cant_climb && testSlope(Normal, upDirection, mUserParams.mSlopeLimit))
 			{
 				if(constrainedClimbingMode && mContactPointHeight > originalBottomPoint + stepOffset)
 				{
