@@ -779,6 +779,7 @@ static void outputConvexToStream(PxShape* convexShape, const PxRigidActor* actor
 	// Do AABB-mesh query
 
 	PxU32* TF;
+	PxU32* TF_idx;
 
 	// Collide AABB against current mesh
 	// The overlap function doesn't exist for convexes so let's just dump all tris
@@ -801,7 +802,9 @@ static void outputConvexToStream(PxShape* convexShape, const PxRigidActor* actor
 
 		// PT: revisit this code. We don't use the polygon offset?
 		TF = reinterpret_cast<PxU32*>(PxAlloca(sizeof(PxU32)*Nb*3));
+		TF_idx = reinterpret_cast<PxU32*>(PxAlloca(sizeof(PxU32)*Nb));
 		PxU32* t = TF;
+		PxU32 k = 0;
 		for(PxU32 i=0;i<nbPolys;i++)
 		{
 			PxHullPolygon data;
@@ -818,6 +821,7 @@ static void outputConvexToStream(PxShape* convexShape, const PxRigidActor* actor
 				*t++ = vref0;
 				*t++ = vref1;
 				*t++ = vref2;
+				TF_idx[k++] = i;
 			}
 			polygons += nbV;
 		}
@@ -849,7 +853,7 @@ static void outputConvexToStream(PxShape* convexShape, const PxRigidActor* actor
 		const PxBounds3 cullingBox = PxBounds3::centerExtents(tmpBounds.getCenter() + offset, boxGeom.halfExtents);
 
 		PxU32 nbCreatedTris = 0;
-		while(Nb--)
+		for (PxU32 i=0;i<Nb;i++)
 		{
 			// Compute triangle in world space, add to array
 			TrianglePadded currentTriangle;
@@ -863,7 +867,7 @@ static void outputConvexToStream(PxShape* convexShape, const PxRigidActor* actor
 			currentTriangle.verts[2] = MeshOffset + absPose.rotate(verts[vref2]);
 
 			PxU32 nbNewTris = 0;
-			tessellateTriangle(nbNewTris, currentTriangle, PX_INVALID_U32, worldTriangles, triIndicesArray, cullingBox, params, nbTessellation);
+			tessellateTriangle(nbNewTris, currentTriangle, TF_idx[i], worldTriangles, triIndicesArray, cullingBox, params, nbTessellation);
 			nbCreatedTris += nbNewTris;
 		}
 		touchedMesh->mNbTris = nbCreatedTris;
@@ -874,7 +878,7 @@ static void outputConvexToStream(PxShape* convexShape, const PxRigidActor* actor
 		PxTriangle* TouchedTriangles = worldTriangles.reserve(Nb);
 
 		touchedMesh->mNbTris = Nb;
-		while(Nb--)
+		for (PxU32 i=0;i<Nb;i++)
 		{
 			// Compute triangle in world space, add to array
 			PxTriangle& currentTriangle = *TouchedTriangles++;
@@ -887,7 +891,7 @@ static void outputConvexToStream(PxShape* convexShape, const PxRigidActor* actor
 			currentTriangle.verts[1] = MeshOffset + absPose.rotate(verts[vref1]);
 			currentTriangle.verts[2] = MeshOffset + absPose.rotate(verts[vref2]);
 
-			triIndicesArray.pushBack(PX_INVALID_U32);
+			triIndicesArray.pushBack(TF_idx[i]);
 		}
 	}
 	if(gVisualizeTouchedTris)
